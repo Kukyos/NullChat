@@ -16,17 +16,10 @@ logger = logging.getLogger(__name__)
 
 class GroqService:
     def __init__(self):
-        # Groq API configuration - API key is now loaded from environment variable or user input
+        # Groq API configuration - API key is now loaded from environment variable only (no interactive input)
         self.api_key = os.getenv("GROQ_API_KEY")
         if not self.api_key:
-            try:
-                # Prompt for API key if not found
-                print("GROQ_API_KEY environment variable not set. Please enter your Groq API key:")
-                self.api_key = input("Groq API Key: ").strip()
-            except Exception:
-                raise ValueError("GROQ_API_KEY environment variable not set and user input failed. Please set it in your environment or .env file.")
-            if not self.api_key:
-                raise ValueError("No Groq API key provided. Please set GROQ_API_KEY in your environment, .env file, or enter it when prompted.")
+            raise ValueError("GROQ_API_KEY environment variable not set. Please set it in your environment or .env file. (Colab users: ensure the notebook writes the key to .env before starting the backend)")
         self.base_url = "https://api.groq.com/openai/v1/chat/completions"
         self.model = "llama-3.1-8b-instant"  # Fast Llama 3.1 8B model
         self.headers = {
