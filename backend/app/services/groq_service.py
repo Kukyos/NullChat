@@ -1,6 +1,8 @@
 """
 Groq AI service for generating intelligent multilingual responses
 """
+
+import os
 import requests
 import logging
 from ..data.college_data import COLLEGE_INFO
@@ -9,8 +11,10 @@ logger = logging.getLogger(__name__)
 
 class GroqService:
     def __init__(self):
-        # Groq API configuration - Get your free API key from https://console.groq.com/
-        self.api_key = "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"  # Replace with your actual Groq API key
+        # Groq API configuration - API key is now loaded from environment variable
+        self.api_key = os.getenv("GROQ_API_KEY")
+        if not self.api_key:
+            raise ValueError("GROQ_API_KEY environment variable not set. Please set it in your environment or .env file.")
         self.base_url = "https://api.groq.com/openai/v1/chat/completions"
         self.model = "llama-3.1-8b-instant"  # Fast Llama 3.1 8B model
         self.headers = {
