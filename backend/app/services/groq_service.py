@@ -1,8 +1,13 @@
+
 """
 Groq AI service for generating intelligent multilingual responses
 """
 
+# Ensure .env is loaded before anything else
+from dotenv import load_dotenv
 import os
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+
 import requests
 import logging
 from ..data.college_data import COLLEGE_INFO
@@ -11,10 +16,17 @@ logger = logging.getLogger(__name__)
 
 class GroqService:
     def __init__(self):
-        # Groq API configuration - API key is now loaded from environment variable
+        # Groq API configuration - API key is now loaded from environment variable or user input
         self.api_key = os.getenv("GROQ_API_KEY")
         if not self.api_key:
-            raise ValueError("GROQ_API_KEY environment variable not set. Please set it in your environment or .env file.")
+            try:
+                # Prompt for API key if not found
+                print("GROQ_API_KEY environment variable not set. Please enter your Groq API key:")
+                self.api_key = input("Groq API Key: ").strip()
+            except Exception:
+                raise ValueError("GROQ_API_KEY environment variable not set and user input failed. Please set it in your environment or .env file.")
+            if not self.api_key:
+                raise ValueError("No Groq API key provided. Please set GROQ_API_KEY in your environment, .env file, or enter it when prompted.")
         self.base_url = "https://api.groq.com/openai/v1/chat/completions"
         self.model = "llama-3.1-8b-instant"  # Fast Llama 3.1 8B model
         self.headers = {
