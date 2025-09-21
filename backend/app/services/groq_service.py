@@ -6,7 +6,16 @@ Groq AI service for generating intelligent multilingual responses
 # Ensure .env is loaded before anything else
 from dotenv import load_dotenv
 import os
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+import sys
+from getpass import getpass
+# Try loading env from both backend/.env and backend/app/.env
+_APP_DIR = os.path.dirname(__file__)
+_BACKEND_DIR = os.path.abspath(os.path.join(_APP_DIR, '..'))
+_BACKEND_ENV = os.path.join(_BACKEND_DIR, '.env')
+_APP_ENV = os.path.join(_APP_DIR, '.env')
+for _candidate in (_BACKEND_ENV, _APP_ENV):
+    if os.path.exists(_candidate):
+        load_dotenv(dotenv_path=_candidate, override=False)
 
 import requests
 import logging
@@ -14,12 +23,45 @@ from ..data.college_data import COLLEGE_INFO
 
 logger = logging.getLogger(__name__)
 
+def _is_interactive_tty() -> bool:
+    """Return True if running in an interactive TTY session suitable for prompting."""
+    try:
+        return sys.stdin is not None and sys.stdin.isatty()
+    except Exception:
+        return False
+
+def get_groq_api_key() -> str:
+    """Resolve the Groq API key with safe, environment-first logic.
+
+    Order:
+    1) Environment variable `GROQ_API_KEY` (including values loaded from .env)
+    2) If interactive TTY, prompt the user (hidden input)
+    3) Otherwise, raise a helpful ValueError
+    """
+    # 1) Read from environment/.env
+    key = os.getenv("GROQ_API_KEY")
+    if key:
+        return key
+
+    # 2) Only prompt if running interactively (avoids hangs in servers/Colab/CI)
+    if _is_interactive_tty():
+        print("GROQ_API_KEY is not set. Please paste your Groq API key. Input will be hidden.")
+        entered = getpass("GROQ_API_KEY: ").strip()
+        if entered:
+            # Set for current process so subsequent uses work without re-prompting
+            os.environ["GROQ_API_KEY"] = entered
+            return entered
+
+    # 3) Non-interactive: fail fast with guidance
+    raise ValueError(
+        "GROQ_API_KEY environment variable not set. Set it in your environment or backend/.env before starting the server. "
+        "(Colab users: ensure the notebook writes the key to .env before starting the backend.)"
+    )
+
 class GroqService:
     def __init__(self):
-        # Groq API configuration - API key is now loaded from environment variable only (no interactive input)
-        self.api_key = os.getenv("GROQ_API_KEY")
-        if not self.api_key:
-            raise ValueError("GROQ_API_KEY environment variable not set. Please set it in your environment or .env file. (Colab users: ensure the notebook writes the key to .env before starting the backend)")
+        # Resolve API key (env/.env first; interactive prompt only when safe)
+        self.api_key = get_groq_api_key()
         self.base_url = "https://api.groq.com/openai/v1/chat/completions"
         self.model = "llama-3.1-8b-instant"  # Fast Llama 3.1 8B model
         self.headers = {
@@ -78,7 +120,6 @@ Instructions:
                 "stream": False
             }
             logger.info(f"Sending request to Groq API with model: {self.model} and response_language: {response_language}")
-            logger.info(f"API Key prefix: {self.api_key[:10]}...")
             response = requests.post(self.base_url, json=payload, headers=self.headers, timeout=10)
             if response.status_code == 200:
                 data = response.json()
