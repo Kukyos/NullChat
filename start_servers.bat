@@ -39,16 +39,17 @@ if not exist "%BACKEND_ENV%" (
 )
 
 REM Select Python command: prefer venv, else py, else python
-set "PY_CMD="
+set "PY_EXE="
+set "PY_ARGS="
 if exist "%VENV_PY%" (
-	set "PY_CMD=\"%VENV_PY%\""
+	set "PY_EXE=%VENV_PY%"
 ) else (
-	where py >nul 2>&1 && set "PY_CMD=py -3"
-	if "%PY_CMD%"=="" (
-		where python >nul 2>&1 && set "PY_CMD=python"
+	where py >nul 2>&1 && ( set "PY_EXE=py" & set "PY_ARGS=-3" )
+	if "%PY_EXE%"=="" (
+		where python >nul 2>&1 && set "PY_EXE=python"
 	)
 )
-if "%PY_CMD%"=="" (
+if "%PY_EXE%"=="" (
 	echo ERROR: Could not find Python. Please install Python 3.10+ or create .venv.
 	goto end
 )
@@ -56,7 +57,7 @@ if "%PY_CMD%"=="" (
 :start_servers
 echo Starting Backend Server (FastAPI)...
 cd /d "%BACKEND_DIR%"
-start "Backend Server" cmd /k %PY_CMD% -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+start "Backend Server" cmd /k ""%PY_EXE%" %PY_ARGS% -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000"
 
 echo Waiting for backend to initialize...
 timeout /t 5 /nobreak >nul
