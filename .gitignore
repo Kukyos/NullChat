@@ -10,3 +10,5 @@ frontend/dist/
 # Env
 .env
 frontend/.env
+
+/.venv
