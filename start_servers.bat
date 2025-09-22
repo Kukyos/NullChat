@@ -43,10 +43,11 @@ set "PY_EXE="
 set "PY_ARGS="
 if exist "%VENV_PY%" (
 	set "PY_EXE=%VENV_PY%"
+	set "PY_ARGS="
 ) else (
 	where py >nul 2>&1 && ( set "PY_EXE=py" & set "PY_ARGS=-3" )
 	if "%PY_EXE%"=="" (
-		where python >nul 2>&1 && set "PY_EXE=python"
+		where python >nul 2>&1 && ( set "PY_EXE=python" & set "PY_ARGS=" )
 	)
 )
 if "%PY_EXE%"=="" (
@@ -64,6 +65,7 @@ timeout /t 5 /nobreak >nul
 
 echo.
 echo Starting Frontend Server (Vite)...
+echo FRONTEND_DIR=%FRONTEND_DIR%
 cd /d "%FRONTEND_DIR%"
 if not exist "node_modules" (
 	echo Installing frontend dependencies (first run)...
