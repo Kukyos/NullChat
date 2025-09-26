@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 # from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -62,6 +63,52 @@ class FeedbackRequest(BaseModel):
 class ForwardRequest(BaseModel):
     conversation_id: int
     additional_context: str = ""
+
+
+@app.get("/", response_class=HTMLResponse)
+def root(_: Request):
+        return """
+        <!doctype html>
+        <html>
+            <head>
+                <meta charset='utf-8'>
+                <meta name='viewport' content='width=device-width, initial-scale=1'>
+                <title>College Chatbot</title>
+                <style>
+                    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem}
+                    h1{font-size:1.4rem}
+                    form{display:flex;gap:.5rem;margin:.5rem 0}
+                    input,button{padding:.6rem;font-size:1rem}
+                    .log{white-space:pre-wrap;background:#fafafa;border:1px solid #eee;padding:1rem;border-radius:8px}
+                </style>
+            </head>
+            <body>
+                <h1>College Chatbot (basic UI)</h1>
+                <p>If the React app isn't running, you can use this simple tester.</p>
+                <form id="f">
+                    <input id="q" placeholder="Ask a question..." style="flex:1"/>
+                    <button>Ask</button>
+                </form>
+                <div class="log" id="log"></div>
+                <script>
+                    const f=document.getElementById('f');
+                    const q=document.getElementById('q');
+                    const log=document.getElementById('log');
+                    f.addEventListener('submit', async (e)=>{
+                        e.preventDefault();
+                        const question=q.value.trim();
+                        if(!question) return;
+                        log.textContent = 'Asking...';
+                        try{
+                            const res = await fetch('/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({question})});
+                            const data = await res.json();
+                            log.textContent = data.answer || JSON.stringify(data,null,2);
+                        }catch(err){ log.textContent = String(err); }
+                    });
+                </script>
+            </body>
+        </html>
+        """
 
 @app.get("/health")
 def health():
