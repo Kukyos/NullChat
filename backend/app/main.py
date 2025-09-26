@@ -1,16 +1,16 @@
-from fastapi import FastAPI, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Depends, HTTPException, Request #type: ignore
+from fastapi.responses import HTMLResponse #type: ignore
+from fastapi.middleware.cors import CORSMiddleware #type: ignore
 # from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from pydantic import BaseModel #type: ignore
+from sqlalchemy.orm import Session #type: ignore
 from .database import get_db, init_db
 from .models.database import Conversation
 from .services.groq_service import groq_service
 from .services.translation import translator_service
 import uuid
 from datetime import datetime
-from dotenv import load_dotenv
+from dotenv import load_dotenv #type: ignore
 import os
 import logging
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Load environment variables from backend directory
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv #type: ignore
 
 # Load environment variables
 load_dotenv()
