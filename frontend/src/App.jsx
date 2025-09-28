@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import './chat.css'
+import { voiceChat, playBase64Audio } from './voiceClient'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
@@ -37,6 +38,10 @@ function App() {
   const [input, setInput] = useState('')
   const [sessionId, setSessionId] = useState(null)
   const containerRef = useRef(null)
+  const mediaRef = useRef(null)
+  const chunksRef = useRef([])
+  const recordTimerRef = useRef(null)
+  const MAX_RECORD_MS = 15000 // 15s safety cap
   // size & resize state
   const [size, setSize] = useState({ w: 360, h: 520 })
   const dragRef = useRef({ resizing: false, startX: 0, startY: 0, startW: 0, startH: 0 })
@@ -46,6 +51,58 @@ function App() {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
   }, [messages, typing])
+
+  useEffect(() => {
+    const cleanup = () => {
+      if (recordTimerRef.current) {
+        clearTimeout(recordTimerRef.current)
+        recordTimerRef.current = null
+      }
+      if (mediaRef.current) {
+        try { mediaRef.current.rec.state !== 'inactive' && mediaRef.current.rec.stop() } catch (_) {}
+        mediaRef.current.stream.getTracks().forEach(t => t.stop())
+        mediaRef.current = null
+      }
+    }
+    if (voiceMode) {
+      (async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          const rec = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+          chunksRef.current = []
+          rec.ondataavailable = e => { if (e.data && e.data.size) chunksRef.current.push(e.data) }
+          rec.onstop = async () => {
+            if (recordTimerRef.current) { clearTimeout(recordTimerRef.current); recordTimerRef.current = null }
+            const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+            if (!blob.size) { cleanup(); return }
+            try {
+              setTyping(true)
+              const result = await voiceChat(blob, { language, sessionId })
+              const transcriptMsg = { role: 'user', text: result.transcript || '(no transcript)', id: Date.now() }
+              const answerMsg = { role: 'bot', text: result.answer, id: Date.now() + 1, conversationId: result.conversation_id, confidence: result.confidence }
+              setMessages(m => [...m, transcriptMsg, answerMsg])
+              if (result.audio_base64) playBase64Audio(result.audio_base64, result.audio_format)
+            } catch (err) {
+              console.error('Voice chat error', err)
+              setMessages(m => [...m, { role: 'bot', text: `Voice processing failed: ${err.message}`, id: Date.now(), isError: true }])
+            } finally { setTyping(false) }
+          }
+          rec.start()
+          mediaRef.current = { rec, stream }
+          // safety auto-stop after max duration
+          recordTimerRef.current = setTimeout(() => {
+            setVoiceMode(false) // triggers cleanup & rec.onstop
+          }, MAX_RECORD_MS)
+        } catch (e) {
+          console.error('Mic access denied', e)
+          setVoiceMode(false)
+        }
+      })()
+    } else {
+      cleanup()
+    }
+    return cleanup
+  }, [voiceMode])
 
   const send = async () => {
     const text = input.trim()
@@ -339,9 +396,10 @@ function App() {
               className={`voice-btn ${voiceMode ? 'recording' : ''}`}
               onClick={() => setVoiceMode(!voiceMode)}
               disabled={typing}
-              title={voiceMode ? "Stop recording" : "Voice input"}
+              title={voiceMode ? `Stop (auto in ${(15)}s)` : "Start voice recording"}
+              aria-pressed={voiceMode}
             >
-              🎤
+              {voiceMode ? '⏺️' : '🎤'}
             </button>
             <textarea
               value={input}
@@ -354,6 +412,7 @@ function App() {
             <button className="send" onClick={send} disabled={typing || (!input.trim() && !voiceMode)}>
               {voiceMode ? "🎙️" : "Send"}
             </button>
+            {voiceMode && <div className="record-hint" style={{fontSize:'0.7rem', color:'#888', position:'absolute', bottom:'100%', right:0}}>Recording...</div>}
           </div>
         </div>
         <div
