@@ -10,6 +10,10 @@ function App() {
   const [showLanguageSelector, setShowLanguageSelector] = useState(true)
   const [typing, setTyping] = useState(false)
   const [messages, setMessages] = useState([])
+  const [recognizing, setRecognizing] = useState(false)
+  const recognitionRef = useRef(null)
+  const synthSpeakingRef = useRef(false)
+  const stopSpeakingRef = useRef(() => {})
 
   // Language options with native scripts
   const languageOptions = [
@@ -41,73 +45,156 @@ function App() {
   const [size, setSize] = useState({ w: 360, h: 520 })
   const dragRef = useRef({ resizing: false, startX: 0, startY: 0, startW: 0, startH: 0 })
 
+  // ---------- Speech Synthesis (TTS) for English responses ----------
+  const speak = (text) => {
+    if (!('speechSynthesis' in window)) return // unsupported
+    window.speechSynthesis.cancel() // stop previous
+    const utter = new SpeechSynthesisUtterance(text)
+    utter.lang = 'en-US'
+    synthSpeakingRef.current = true
+    stopSpeakingRef.current = () => {
+      try { window.speechSynthesis.cancel() } catch {}
+      synthSpeakingRef.current = false
+    }
+    utter.onend = () => { synthSpeakingRef.current = false }
+    utter.onerror = () => { synthSpeakingRef.current = false }
+    window.speechSynthesis.speak(utter)
+  }
+
+  // ---------- Speech Recognition (STT) for English input ----------
+  useEffect(() => {
+    if (!voiceMode) {
+      // Turned off
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop() } catch {}
+      }
+      setRecognizing(false)
+      return
+    }
+
+    if (language !== 'en') return // currently only English voice implemented
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      setMessages(m => [...m, { role: 'bot', id: Date.now(), text: 'Voice not supported in this browser. Try latest Chrome/Edge.' }])
+      setVoiceMode(false)
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognitionRef.current = recognition
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.lang = 'en-US'
+
+    let finalTranscript = ''
+
+    recognition.onstart = () => setRecognizing(true)
+    recognition.onerror = (e) => {
+      console.error('SpeechRecognition error', e)
+      setRecognizing(false)
+    }
+    recognition.onend = () => {
+      setRecognizing(false)
+      if (voiceMode) {
+        // Auto-restart for continuous dictation unless user toggled off
+        try { recognition.start() } catch {}
+      }
+    }
+    recognition.onresult = (event) => {
+      let interim = ''
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const res = event.results[i]
+        if (res.isFinal) {
+          finalTranscript += res[0].transcript
+        } else {
+          interim += res[0].transcript
+        }
+      }
+      // Show interim text in the input UI
+      if (interim) setInput(interim)
+      if (finalTranscript) {
+        const trimmed = finalTranscript.trim()
+        if (trimmed) {
+          setInput(trimmed)
+          // Auto send on short pause
+          if (!typing) {
+            // slight delay to allow any finishing words
+            setTimeout(() => {
+              send(trimmed, { fromVoice: true })
+              finalTranscript = ''
+              setInput('')
+            }, 250)
+          }
+        }
+      }
+    }
+
+    try { recognition.start() } catch (e) { console.error('Failed to start recognition', e) }
+
+    return () => { try { recognition.stop() } catch {} }
+  }, [voiceMode, language])
+
+  // Scroll messages container on updates
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
   }, [messages, typing])
 
-  const send = async () => {
-    const text = input.trim()
+  // Updated send function to optionally accept provided text (for voice)
+  const send = async (overrideText, meta = {}) => {
+    const text = (overrideText !== undefined ? overrideText : input).trim()
     if (!text || typing) return
-    
-    // push user message
-    const userMsg = { role: 'user', text, id: Date.now() }
+
+    const userMsg = { role: 'user', text, id: Date.now(), viaVoice: meta.fromVoice }
     setMessages((m) => [...m, userMsg])
-    setInput('')
+    if (!meta.fromVoice) setInput('')
     setTyping(true)
-    
+
     try {
       const response = await fetch(`${API_BASE}/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          question: text, 
+        body: JSON.stringify({
+          question: text,
           language: language,
           ...(sessionId && { session_id: sessionId })
         }),
       })
-      
+
       if (!response.ok) {
         const errorText = await response.text()
         throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
-      
+
       const data = await response.json()
-      setMessages((m) => [...m, { 
-        role: 'bot', 
-        text: data.answer, 
+      const botMsg = {
+        role: 'bot',
+        text: data.answer,
         id: Date.now() + 1,
         conversationId: data.conversation_id,
-        confidence: data.confidence 
-      }])
-      
-      // Update session ID if new
+        confidence: data.confidence
+      }
+      setMessages((m) => [...m, botMsg])
+
+      // Speak the answer if English + voice mode
+      if (language === 'en' && voiceMode && data.answer) {
+        speak(data.answer)
+      }
+
       if (data.session_id && data.session_id !== sessionId) {
         setSessionId(data.session_id)
       }
-      
+
     } catch (error) {
       console.error('Error:', error)
-      
-      // Try to get more detailed error information
       let errorMessage = 'Sorry, I encountered an error. Please try again.'
-      
-      if (error.message) {
-        errorMessage = `Error: ${error.message}`
-      }
-      
-      // If it's a fetch error, try to get response details
+      if (error.message) errorMessage = `Error: ${error.message}`
       if (error instanceof TypeError && error.message.includes('fetch')) {
         errorMessage = `Network Error: Cannot connect to server. Make sure backend is running on http://127.0.0.1:8000`
       }
-      
-      setMessages((m) => [...m, { 
-        role: 'bot', 
-        text: errorMessage, 
-        id: Date.now() + 1,
-        isError: true 
-      }])
+      setMessages((m) => [...m, { role: 'bot', text: errorMessage, id: Date.now() + 1, isError: true }])
     } finally {
       setTyping(false)
     }
@@ -312,8 +399,23 @@ function App() {
 
         <div className="chat-controls">
           <div className="options">
-            <label className="toggle">
-              <input type="checkbox" checked={voiceMode} onChange={(e) => setVoiceMode(e.target.checked)} />
+            <label className="toggle" title={language !== 'en' ? 'Voice currently only supports English' : ''}>
+              <input
+                type="checkbox"
+                checked={voiceMode}
+                onChange={(e) => {
+                  const enabled = e.target.checked
+                  if (enabled && language !== 'en') {
+                    // auto switch to English
+                    setLanguage('en')
+                    setMessages(m => [...m, { role: 'bot', id: Date.now(), text: 'Voice mode currently only supports English. Language set to English.' }])
+                  }
+                  if (!enabled && recognitionRef.current) {
+                    try { recognitionRef.current.stop() } catch {}
+                  }
+                  setVoiceMode(enabled)
+                }}
+              />
               <span className="slider"></span>
               <span className="label">Voice mode</span>
             </label>
@@ -335,24 +437,24 @@ function App() {
             </div>
           </div>
           <div className="chat-input">
-            <button 
-              className={`voice-btn ${voiceMode ? 'recording' : ''}`}
+            <button
+              className={`voice-btn ${voiceMode ? (recognizing ? 'recording' : 'starting') : ''}`}
               onClick={() => setVoiceMode(!voiceMode)}
               disabled={typing}
-              title={voiceMode ? "Stop recording" : "Voice input"}
+              title={voiceMode ? (recognizing ? 'Stop voice' : 'Initializing...') : 'Start voice input'}
             >
               🎤
             </button>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder={voiceMode ? "Listening..." : "Type your message..."}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+              placeholder={voiceMode ? (recognizing ? 'Listening... speak now' : 'Starting microphone...') : 'Type your message...'}
               rows={2}
               disabled={voiceMode}
             />
-            <button className="send" onClick={send} disabled={typing || (!input.trim() && !voiceMode)}>
-              {voiceMode ? "🎙️" : "Send"}
+            <button className="send" onClick={() => send()} disabled={typing || (!input.trim() && !voiceMode)}>
+              {voiceMode ? (recognizing ? '🎙️' : '...') : 'Send'}
             </button>
           </div>
         </div>
