@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 // Voice client utility for Sarvam placeholder endpoints
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
@@ -10,6 +11,8 @@ export async function voiceChat(blob, { language, sessionId } = {}) {
   const res = await fetch(`${API_BASE}/voice/chat`, { method: 'POST', body: form })
   if (!res.ok) throw new Error(`voice/chat HTTP ${res.status}`)
 =======
+=======
+>>>>>>> Stashed changes
 // Voice client utility for Sarvam real voice endpoints
 // Adds client-side WebM/Opus -> WAV (PCM16 16kHz mono) conversion so the backend
 // does NOT require ffmpeg to transcode. If conversion fails, original blob is sent.
@@ -128,17 +131,23 @@ export async function voiceChat(blob, { language, sessionId } = {}) {
     try { detail = await res.text() } catch (_) {}
     throw new Error(`voice/chat HTTP ${res.status}${detail ? ' - ' + detail : ''}`)
   }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   return res.json()
 }
 
 export async function sttOnly(blob) {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   const form = new FormData()
   form.append('file', blob, 'voice.webm')
   const res = await fetch(`${API_BASE}/voice/stt`, { method: 'POST', body: form })
   if (!res.ok) throw new Error(`voice/stt HTTP ${res.status}`)
 =======
+=======
+>>>>>>> Stashed changes
   const wavBlob = await convertWebmBlobToWav(blob)
   const isWav = wavBlob.type === 'audio/wav'
   const form = new FormData()
@@ -149,6 +158,9 @@ export async function sttOnly(blob) {
     try { detail = await res.text() } catch (_) {}
     throw new Error(`voice/stt HTTP ${res.status}${detail ? ' - ' + detail : ''}`)
   }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   return res.json()
 }
@@ -160,12 +172,15 @@ export async function tts(text) {
     body: JSON.stringify({ text }) 
   })
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   if (!res.ok) throw new Error(`voice/tts HTTP ${res.status}`)
   return res.json()
 }
 
 export function playBase64Audio(b64) {
 =======
+=======
+>>>>>>> Stashed changes
   if (!res.ok) {
     let detail = ''
     try { detail = await res.text() } catch (_) {}
@@ -175,6 +190,9 @@ export function playBase64Audio(b64) {
 }
 
 export function playBase64Audio(b64, format = 'wav') {
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   try {
     const binary = atob(b64)
@@ -182,11 +200,14 @@ export function playBase64Audio(b64, format = 'wav') {
     const bytes = new Uint8Array(len)
     for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     const blob = new Blob([bytes], { type: 'audio/mpeg' })
     const url = URL.createObjectURL(blob)
     const audio = new Audio(url)
     audio.play()
 =======
+=======
+>>>>>>> Stashed changes
     // Map simple format labels to MIME types; default to wav
     const mimeMap = {
       mp3: 'audio/mpeg',
@@ -200,6 +221,9 @@ export function playBase64Audio(b64, format = 'wav') {
     const url = URL.createObjectURL(blob)
     const audio = new Audio(url)
     audio.play().catch(err => console.warn('Autoplay blocked, user gesture needed', err))
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     audio.onended = () => URL.revokeObjectURL(url)
   } catch (e) {

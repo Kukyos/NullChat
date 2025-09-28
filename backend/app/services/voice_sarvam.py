@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Sarvam AI voice service placeholder.
 
 This module provides three endpoints:
@@ -11,6 +12,8 @@ Replace the placeholder SARVAM_* endpoints and logic with real Sarvam API calls.
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Body
 from fastapi.responses import StreamingResponse, JSONResponse
 =======
+=======
+>>>>>>> Stashed changes
 """Sarvam AI voice service (REAL ONLY).
 
 Removed all placeholder / mock transcript / silent audio generation.
@@ -18,6 +21,9 @@ All endpoints require a valid Sarvam API key.
 """
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Body
 from fastapi.responses import JSONResponse
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from sqlalchemy.orm import Session
 from ..database import get_db
@@ -29,9 +35,12 @@ import io
 import uuid
 import logging
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
 logger = logging.getLogger(__name__)
 =======
+=======
+>>>>>>> Stashed changes
 import json
 from typing import Optional, Tuple
 import subprocess
@@ -45,28 +54,38 @@ except ImportError:  # guidance if missing
 logger = logging.getLogger(__name__)
 BUILD_TAG = "voice-real-only-v1"  # increment if changing voice pipeline semantics
 logger.info(f"[voice_init] Loading voice module build={BUILD_TAG} real_only={True}")
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 router = APIRouter(prefix="/voice", tags=["voice"])
 
 SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 # Placeholder endpoints (update with real Sarvam endpoints)
 SARVAM_STT_ENDPOINT = os.getenv("SARVAM_STT_ENDPOINT", "https://api.sarvam.ai/v1/audio/transcribe")
 SARVAM_TTS_ENDPOINT = os.getenv("SARVAM_TTS_ENDPOINT", "https://api.sarvam.ai/v1/audio/synthesize")
 =======
+=======
+>>>>>>> Stashed changes
 SARVAM_STT_ENDPOINT = os.getenv("SARVAM_STT_ENDPOINT", "https://api.sarvam.ai/v1/audio/transcribe")
 SARVAM_TTS_ENDPOINT = os.getenv("SARVAM_TTS_ENDPOINT", "https://api.sarvam.ai/v1/audio/synthesize")
 SARVAM_REAL_MODE = True  # Force real mode
 SARVAM_TTS_VOICE = os.getenv("SARVAM_TTS_VOICE", "default")
 SARVAM_TTS_FORMAT = os.getenv("SARVAM_TTS_FORMAT", "wav")
 SARVAM_TIMEOUT_SEC = float(os.getenv("SARVAM_TIMEOUT", "30"))
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 
 def _require_key():
     if not SARVAM_API_KEY:
         raise HTTPException(status_code=500, detail="Sarvam API key not configured (set SARVAM_API_KEY)")
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 
 @router.post("/stt")
@@ -87,6 +106,8 @@ async def tts(text: str = Body(..., embed=True)):
     b64 = base64.b64encode(fake_audio).decode()
     return {"audio_base64": b64, "length": len(fake_audio)}
 =======
+=======
+>>>>>>> Stashed changes
     if httpx is None:
         raise HTTPException(status_code=500, detail="httpx not installed. Run 'pip install httpx'")
 
@@ -209,6 +230,9 @@ async def tts(text: str = Body(..., embed=True)):
     _require_key()
     audio_b64, fmt = await _real_tts(text)
     return {"audio_base64": audio_b64, "format": fmt, "provider": "sarvam"}
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 @router.post("/chat")
@@ -219,6 +243,7 @@ async def voice_chat(
     db: Session = Depends(get_db),
 ):
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     """End-to-end voice chat:
     1. STT via Sarvam (placeholder)
     2. Process question via existing Groq pipeline
@@ -228,10 +253,14 @@ async def voice_chat(
 =======
     """End-to-end voice chat (real only)."""
 >>>>>>> Stashed changes
+=======
+    """End-to-end voice chat (real only)."""
+>>>>>>> Stashed changes
     _require_key()
     audio_bytes = await file.read()
     if not audio_bytes:
         raise HTTPException(status_code=400, detail="Empty audio upload")
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 
     # Placeholder STT
@@ -240,10 +269,15 @@ async def voice_chat(
 
     # Use unified pipeline (so voice & text share logic)
 =======
+=======
+>>>>>>> Stashed changes
     prepared_bytes, prepared_type = _prepare_audio_for_stt(audio_bytes, file.content_type)
     transcript = await _real_stt(prepared_bytes, prepared_type)
     logger.info(f"Voice CHAT transcript len={len(transcript)} preview='{transcript[:60]}'")
     user_lang = language or "auto"
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     pipeline = process_question(
         question=transcript,
@@ -256,11 +290,15 @@ async def voice_chat(
     user_lang = pipeline["language_detected"]
     conv_id = pipeline["conversation_id"]
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
     # Placeholder TTS
     fake_audio = b"FAKEAUDIOANSWER"  # Replace with Sarvam TTS bytes
     audio_b64 = base64.b64encode(fake_audio).decode()
 
+=======
+    audio_b64, audio_fmt = await _real_tts(answer_text)
+>>>>>>> Stashed changes
 =======
     audio_b64, audio_fmt = await _real_tts(answer_text)
 >>>>>>> Stashed changes
@@ -272,7 +310,10 @@ async def voice_chat(
         "conversation_id": conv_id,
         "audio_base64": audio_b64,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
         "audio_format": audio_fmt,
         "stt_provider": "sarvam",
         "tts_provider": "sarvam",
@@ -291,5 +332,8 @@ async def voice_status():
         "voice": SARVAM_TTS_VOICE,
         "format": SARVAM_TTS_FORMAT,
         "timeout_sec": SARVAM_TIMEOUT_SEC,
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
